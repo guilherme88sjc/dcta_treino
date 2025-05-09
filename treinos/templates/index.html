@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema de Treino Personalizado</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+    <style>
+        body {
+            background-color: #a8c1db;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .treino-card {
+            margin-top: 30px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            padding: 20px;
+            background-color: #fff;
+        }
+        .treino-card h3 {
+            margin-bottom: 15px;
+            color: #343a40;
+        }
+        .treino-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .treino-card li {
+            margin-bottom: 8px;
+            color: #495057;
+        }
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="http://127.0.0.1:8000/login/" class="btn btn-secondary logout-btn">Sair</a>
+        <div style="display: flex; align-items: center;">
+            <img src="https://www.bksv.com/-/media/Images/Customers/Space/DCTA/DCTA-logo.ashx?h=144&w=215&hash=9B1E97C562B31E5E13A71C7CFFB61C9C70E58D10&la=pt" alt="Logo DCTA" style="width: 300px; height: 180px; margin-right: 10px;">
+            <div>
+                <h2 class="mb-4">Departamento de Ciência e Tecnologia Aeroespacial</h2>
+                <h3 class="mb-3">Seção de Instrução do DCTA</h3>
+                <h4 class="mb-4">Sistema de Treino Personalizado para o efetivo do DCTA</h4>
+            </div>
+        </div>
+        <!-- Primeira tela: Dados Pessoais -->
+        <div id="tela-dados-pessoais">
+            <h2 class="mb-3">Dados Pessoais</h2>
+            <form id="form-dados">
+                <div class="form-group">
+                    <label for="nomeCompleto">Nome Completo:</label>
+                    <input type="text" class="form-control" id="nomeCompleto" required>
+                </div>
+                <div class="form-group">
+                    <label for="sexo">Sexo:</label>
+                    <select class="form-control" id="sexo" required>
+                        <option value="">Selecione</option>
+                        <option value="masculino">Masculino</option>
+                        <option value="feminino">Feminino</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="idade">Idade:</label>
+                    <input type="number" class="form-control" id="idade" required>
+                </div>
+                <div class="form-group">
+                    <label for="identidade">Identidade:</label>
+                    <input type="text" class="form-control" id="identidade" required>
+                </div>
+                <div class="form-group">
+                    <label for="setor">Setor de Trabalho:</label>
+                    <input type="text" class="form-control" id="setor" required>
+                </div>
+            </form>
+        </div>
+        <h2 class="mb-3">Dados do 1º Teste Físico (1º Semestre de 2025)</h2>
+        <div class="form-group">
+            <label for="flexoes">Digite o número de flexões realizadas:</label>
+            <input type="number" class="form-control" id="flexoes" required>
+            <small id="flexoesHelp" class="form-text text-muted">Por favor, digite um número inteiro.</small>
+        </div>
+        <div class="form-group">
+            <label for="abdominais">Digite o número de abdominais realizadas:</label>
+            <input type="number" class="form-control" id="abdominais" required>
+            <small id="abdominaisHelp" class="form-text text-muted">Por favor, digite um número inteiro.</small>
+        </div>
+        <div class="form-group">
+            <label for="corrida">Digite a distância percorrida em metros na corrida de 12 minutos:</label>
+            <input type="number" class="form-control" id="corrida" required>
+            <small id="corridaHelp" class="form-text text-muted">Por favor, digite um número inteiro.</small>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="gerarTreino()">Gerar Treino</button>
+
+        <div id="resultado-treino" class="mt-5"></div>
+    </div>
+
+    <script>
+        // Função para obter o token CSRF
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+
+        function gerarTreino() {
+            const nomeCompleto = document.getElementById("nomeCompleto").value;
+            const sexo = document.getElementById("sexo").value;
+            const idade = parseInt(document.getElementById("idade").value);
+            const identidade = document.getElementById("identidade").value;
+            const setor = document.getElementById("setor").value;
+            const flexoes = parseInt(document.getElementById("flexoes").value);
+            const abdominais = parseInt(document.getElementById("abdominais").value);
+            const corrida = parseInt(document.getElementById("corrida").value);
+            const resultadoDiv = document.getElementById("resultado-treino");
+            resultadoDiv.innerHTML = ""; // Limpa resultados anteriores
+
+            const treinosFlexoes = {
+                "facil": [
+                    "Flexão na parede (3 séries de 10 repetições)",
+                    "Flexão com joelhos no chão (3 séries de 8 repetições)",
+                    "Flexão inclinada em banco alto (3 séries de 10 repetições)",
+                    "Flexão negativa (3 séries de 5 repetições lentas)",
+                    "Flexão diamante com joelhos no chão (2 séries de 6 repetições)"
+                ],
+                "medio": [
+                    "Flexão padrão (3 séries de 10 repetições)",
+                    "Flexão com pausa no chão (3 séries de 8 repetições)",
+                    "Flexão inclinada em banco baixo (3 séries de 10 repetições)",
+                    "Flexão fechada (3 séries de 8 repetições)",
+                    "Flexão declinada (2 séries de 8 repetições)"
+                ],
+                "dificil": [
+                    "Flexão pliométrica (3 séries de 5 repetições)",
+                    "Flexão com uma mão (2 séries de 3 repetições por braço)",
+                    "Flexão com elevação de pernas (3 séries de 8 repetições)",
+                    "Flexão diamante (3 séries de 8 repetições)",
+                    "Flexão com peso nas costas (2 séries de 6 repetições)"
+                ]
+            };
+
+            const treinosAbdominais = {
+                "facil": [
+                    "Crunch reto (3 séries de 15 repetições)",
+                    "Crunch oblíquo (3 séries de 12 repetições por lado)",
+                    "Elevação de pernas no chão (3 séries de 15 repetições)",
+                    "Bicicleta no chão (3 séries de 20 repetições)",
+                    "Prancha frontal (3 séries de 30 segundos)"
+                ],
+                "medio": [
+                    "Crunch com pernas elevadas (3 séries de 15 repetições)",
+                    "Crunch reverso (3 séries de 15 repetições)",
+                    "Tesoura (3 séries de 20 repetições)",
+                    "Rotação de tronco com peso leve (3 séries de 15 repetições por lado)",
+                    "Prancha lateral (3 séries de 45 segundos por lado)"
+                ],
+                "dificil": [
+                    "Abdominal canoa (3 séries de 15 repetições)",
+                    "Dragon flag (2 séries de 5 repetições)",
+                    "Abdominal grupado suspenso (3 séries de 10 repetições)",
+                    "Roda abdominal (3 séries de 8 repetições)",
+                    "Prancha com elevação de braço e perna alternada (3 séries de 45 segundos)"
+                ]
+            };
+
+            const treinosCorrida = {
+                "facil": [
+                    "Caminhada rápida por 30 minutos.",
+                    "Trote leve por 20 minutos com intervalos de caminhada de 1 minuto (repetir 3 vezes).",
+                    "Corrida contínua em ritmo confortável por 25 minutos."
+                ],
+                "medio": [
+                    "Corrida contínua em ritmo moderado por 35 minutos.",
+                    "Treino intervalado: 400 metros em ritmo forte, seguido de 2 minutos de trote leve (repetir 4 vezes).",
+                    "Fartlek: Alternar entre 1 minuto de corrida rápida e 2 minutos de corrida leve por 30 minutos."
+                ],
+                "dificil": [
+                    "Corrida contínua em ritmo forte por 45 minutos.",
+                    "Treino intervalado: 800 metros em ritmo forte, seguido de 3 minutos de trote leve (repetir 4 vezes).",
+                    "Treino de ritmo: 5 km em ritmo constante e desafiador."
+                ]
+            };
+
+            let nivelFlexoes;
+            if (flexoes < 20) {
+                nivelFlexoes = "facil";
+            } else if (flexoes >= 20 && flexoes <= 30) {
+                nivelFlexoes = "medio";
+            } else {
+                nivelFlexoes = "dificil";
+            }
+
+            let nivelAbdominais;
+            if (abdominais < 20) {
+                nivelAbdominais = "facil";
+            } else if (abdominais >= 20 && abdominais <= 30) {
+                nivelAbdominais = "medio";
+            } else {
+                nivelAbdominais = "dificil";
+            }
+
+            let nivelCorrida;
+            if (corrida < 1500) {
+                nivelCorrida = "facil";
+            } else if (corrida >= 1500 && corrida <= 2000) {
+                nivelCorrida = "medio";
+            } else {
+                nivelCorrida = "dificil";
+            }
+
+            // Enviar dados para o backend
+            const dadosTreino = {
+                nomeCompleto,
+                sexo,
+                idade,
+                identidade,
+                setor,
+                flexoes,
+                abdominais,
+                corrida,
+                nivelFlexoes,
+                nivelAbdominais,
+                nivelCorrida
+            };
+
+            fetch('/salvar-treino/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify(dadosTreino)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Treino salvo no banco de dados com sucesso!');
+                } else {
+                    alert('Erro ao salvar treino: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Erro ao salvar treino: ' + error);
+            });
+
+            // Gerar o treino na tela
+            let treinoFlexoesHTML = `<div class="treino-card"><h3>Seu treino de flexões recomendado (nível ${nivelFlexoes}):</h3><ul>`;
+            treinosFlexoes[nivelFlexoes].forEach(exercicio => {
+                treinoFlexoesHTML += `<li>${exercicio}</li>`;
+            });
+            treinoFlexoesHTML += `</ul></div>`;
+
+            let treinoAbdominaisHTML = `<div class="treino-card"><h3>Seu treino de abdominais recomendado (nível ${nivelAbdominais}):</h3><ul>`;
+            treinosAbdominais[nivelAbdominais].forEach(exercicio => {
+                treinoAbdominaisHTML += `<li>${exercicio}</li>`;
+            });
+            treinoAbdominaisHTML += `</ul></div>`;
+
+            let treinoCorridaHTML = `<div class="treino-card"><h3>Seu treino de corrida recomendado (nível ${nivelCorrida}):</h3><ul>`;
+            treinosCorrida[nivelCorrida].forEach(exercicio => {
+                treinoCorridaHTML += `<li>${exercicio}</li>`;
+            });
+            treinoCorridaHTML += `</ul></div>`;
+
+            resultadoDiv.innerHTML = treinoFlexoesHTML + treinoAbdominaisHTML + treinoCorridaHTML;
+
+            // Criando o PDF
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+
+            // Adicionando informações pessoais
+            pdf.setFontSize(16);
+            pdf.text('Dados Pessoais', 10, 10);
+            pdf.setFontSize(12);
+            pdf.text(`Nome Completo: ${nomeCompleto}`, 10, 20);
+            pdf.text(`Sexo: ${sexo}`, 10, 26);
+            pdf.text(`Idade: ${idade}`, 10, 32);
+            pdf.text(`Identidade: ${identidade}`, 10, 38);
+            pdf.text(`Setor de Trabalho: ${setor}`, 10, 44);
+
+            // Adicionando os treinos
+            pdf.setFontSize(16);
+            pdf.text('Treino Personalizado', 10, 55);
+            pdf.setFontSize(12);
+
+            let yPosition = 65;
+            const lineHeight = 6;
+
+            // Adiciona o treino de flexões
+            pdf.text('Treino de Flexões:', 10, yPosition);
+            yPosition += lineHeight;
+            treinosFlexoes[nivelFlexoes].forEach(exercicio => {
+                pdf.text(`- ${exercicio}`, 15, yPosition);
+                yPosition += lineHeight;
+                if (yPosition > 280) {
+                    pdf.addPage();
+                    yPosition = 10;
+                }
+            });
+            yPosition += 5;
+
+            // Adiciona o treino de abdominais
+            pdf.text('Treino de Abdominais:', 10, yPosition);
+            yPosition += lineHeight;
+            treinosAbdominais[nivelAbdominais].forEach(exercicio => {
+                pdf.text(`- ${exercicio}`, 15, yPosition);
+                yPosition += lineHeight;
+                if (yPosition > 280) {
+                    pdf.addPage();
+                    yPosition = 10;
+                }
+            });
+            yPosition += 5;
+
+            // Adiciona o treino de corrida
+            pdf.text('Treino de Corrida:', 10, yPosition);
+            yPosition += lineHeight;
+            treinosCorrida[nivelCorrida].forEach(exercicio => {
+                pdf.text(`- ${exercicio}`, 15, yPosition);
+                yPosition += lineHeight;
+                if (yPosition > 280) {
+                    pdf.addPage();
+                    yPosition = 10;
+                }
+            });
+
+            // Salva o PDF
+            pdf.save('treino_dcta.pdf');
+        }
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
